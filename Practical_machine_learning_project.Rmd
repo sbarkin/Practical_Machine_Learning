@@ -1,0 +1,99 @@
+---
+title: "Practical Machine Learning Project"
+output: 
+  html_document:
+    keep_md: true
+---
+
+## Executive summary
+Using devices such as Jawbone Up, Nike FuelBand, and Fitbit it is now possible to collect a large amount of data about personal activity relatively inexpensively. Subjects were asked to perform barbell lifts correctly and incorrectly in 5 different ways.
+The goal of the project is to predict the manner in which they did the exercise. This is the "classe" variable in the training set.
+We use the random tree forrest to estimate and predict the manner in wich the subjects have done the exercise. 
+
+
+## Getting and cleaning the data
+We are getting the 2 data sets, one for the training data and one for the test data.
+We clean up the potential NA strings from the sources.
+Most of the work will be done on the Training data set.
+
+```{r}
+fullTrainingSet <- read.csv("pml-training.csv", na.strings = c("NA", "#DIV/0!", ""))
+fullTestSet <- read.csv("pml-testing.csv", na.strings = c("NA", "#DIV/0!", ""))
+```
+
+We perform some exploratory analysis of the data sets. Only the results of the `str` function are shown here. Some cleanup is needed to get the data set in necessary conditions.
+```{r}
+str(fullTrainingSet)
+```
+
+It looks like some of the columns have mainly NA values. We get the numbers of those values for each column, store it and display it.
+```{r}
+
+naValuesPerColumn = sapply(fullTrainingSet, function(x) { sum(is.na(x)) })
+table(naValuesPerColumn)
+```
+
+We update the training data set by removing all the columns containing at least 1 NA value. From the results we had shown, all those columns were mostly empty and therefore the covariates contained in those columns would have very little powwr of prediction.
+
+
+```{r}
+
+EmptyColumns = names(naValuesPerColumn[naValuesPerColumn == 0])
+fullTrainingSet = fullTrainingSet[, names(fullTrainingSet) %in% EmptyColumns]
+
+```
+
+We can also remove the first 7 columns from the dat set as they contain information such as time stamps or User name that are not meaningful to make predictions.
+```{r}
+
+fullTrainingSet = fullTrainingSet[, -c(1:7)]
+
+```
+The data is now cleaned up so we can perform our analysis.
+
+## Predictive method
+
+We load the libraries we will need. 
+```{r message=FALSE, warning=FALSE}
+library(caret)
+library(randomForest)
+
+```
+
+We split our Full Training data sets in 2 parts. 80% of the data will go the actual training set. The remaining 20% will go to a test set used for cross validation
+```{r}
+
+trainingIndex  <- createDataPartition(fullTrainingSet$classe, p = 0.8, list = FALSE)
+training.train <- fullTrainingSet[ trainingIndex, ]
+training.test  <- fullTrainingSet[-trainingIndex, ]
+
+```
+We use the random forrest algorithm to train and test the data  
+```{r}
+
+
+randomForest <- train(training.train[,-53], training.train$classe, tuneGrid = data.frame(mtry = 3), 
+                      trControl = trainControl(method = "none"))
+```
+
+Here are the results coming out of the function.
+```{r}
+summary(randomForest)
+```
+We can now compare the results from the training sets with the expected values from the test set. We use the `confusionMatrix` function to show the results.
+
+```{r}
+confusionMatrix(predict(randomForest, newdata = training.test[,-53]), training.test$classe)
+```
+
+We have a very good accuracy (0.994) as well as the sensitivity and specificity. The lowest value for the sensitivity is 0.993. The Kappa statistic (out-of-sample error) is 0.992. 
+
+```{r}
+```
+
+
+
+
+
+
+
